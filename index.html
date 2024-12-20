@@ -284,6 +284,11 @@
 				"95": 17, "120": 19, "150": 21, "185": 23.5, "240": 26.5,
 				"300": 29.5, "400": 33.5, "500": 37, "630": 41
 			}
+		},
+		"UKPN 12KV Triplex": {
+			"1": {
+				"95": 65.5,  "185": 75.0, "300": 84.6
+			}
 		}		
     };
     const standardSizes = {
@@ -333,9 +338,10 @@
 					<tr>
 						<th>S/N</th>
 						<th>Cable Type</th>
+						<th>Configuration</th>
 						<th>No. of integral cores</th>
 						<th>CSA (mm²)</th>
-						<th>Diameter (mm)</th>
+						<th>Dimension (mm)</th>
 						<th>Quantity</th>
 						<th class="no-print">Action</th>
 					</tr>
@@ -371,6 +377,17 @@
 		}
 		selectType.onchange = () => updateCores(row);
 		cellType.appendChild(selectType);
+		
+		// Configuration
+		const cellConfig = row.insertCell();
+		const selectConfig = document.createElement('select');
+		selectConfig.className = 'form-select';
+		selectConfig.innerHTML = `
+			<option value="Flat" selected>Flat</option>
+			<option value="Trefoil">Trefoil</option>
+		`;
+		selectConfig.onchange = () => updateCores(row);
+		cellConfig.appendChild(selectConfig);
 
 		// Cores
 		const cellCores = row.insertCell();
@@ -426,25 +443,37 @@
 
 	function updateCores(row) {
 		const type = row.cells[1].firstChild.value;
-		const selectCores = row.cells[2].firstChild;
-		const selectCSA = row.cells[3].firstChild;
+		const config = row.cells[2].firstChild.value;
+		const selectCores = row.cells[3].firstChild;
+		const selectCSA = row.cells[4].firstChild;
 
 		selectCores.innerHTML = '<option value="" selected disabled>Select no. of cores</option>';
-		for (const cores in cableData[type]) {
-			const option = document.createElement('option');
-			option.value = option.textContent = cores;
-			selectCores.appendChild(option);
+		
+		if (config === 'Trefoil') {
+			// Only allow single core for trefoil
+			if ('1' in cableData[type]) {
+				const option = document.createElement('option');
+				option.value = option.textContent = '1';
+				selectCores.appendChild(option);
+			}
+		} else {
+			// Show all core options for flat configuration
+			for (const cores in cableData[type]) {
+				const option = document.createElement('option');
+				option.value = option.textContent = cores;
+				selectCores.appendChild(option);
+			}
 		}
+		
 		selectCores.onchange = () => updateCSA(row);
-
 		selectCSA.innerHTML = '<option value="" selected disabled>Select CSA</option>';
-		row.cells[4].textContent = '';
+		row.cells[5].textContent = '';
 	}
 
 	function updateCSA(row) {
 		const type = row.cells[1].firstChild.value;
-		const cores = row.cells[2].firstChild.value;
-		const selectCSA = row.cells[3].firstChild;
+		const cores = row.cells[3].firstChild.value;
+		const selectCSA = row.cells[4].firstChild;
 
 		selectCSA.innerHTML = '<option value="" selected disabled>Select CSA</option>';
 		for (const csa in cableData[type][cores]) {
@@ -454,15 +483,22 @@
 		}
 		selectCSA.onchange = () => updateDiameter(row);
 
-		row.cells[4].textContent = '';
+		row.cells[5].textContent = '';
 	}
 
 	function updateDiameter(row) {
 		const type = row.cells[1].firstChild.value;
-		const cores = row.cells[2].firstChild.value;
-		const csa = row.cells[3].firstChild.value;
-		const diameter = cableData[type][cores][csa];
-		row.cells[4].textContent = diameter.toFixed(1);
+		const config = row.cells[2].firstChild.value;
+		const cores = row.cells[3].firstChild.value;
+		const csa = row.cells[4].firstChild.value;
+		let diameter = cableData[type][cores][csa];
+		
+		// Double the diameter for trefoil configuration
+		if (config === 'Trefoil') {
+			diameter *= 2;
+		}
+		
+		row.cells[5].textContent = diameter.toFixed(1);
 	}
 
 	function calculate(sectionIndex) {
@@ -472,8 +508,8 @@
 		let totalCables = 0;
 
 		rows.forEach(row => {
-			const diameter = parseFloat(row.cells[4].textContent) || 0;
-			const quantity = parseInt(row.cells[5].firstChild.value) || 0;
+			const diameter = parseFloat(row.cells[5].textContent) || 0;
+			const quantity = parseInt(row.cells[6].firstChild.value) || 0;
 			totalSpaceOccupied += diameter * quantity;
 			totalCables += quantity;
 		});
@@ -530,6 +566,3 @@
     </script>
 </body>
 </html>
-
-
-//Developed by RadaLab 
